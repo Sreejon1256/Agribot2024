@@ -1,0 +1,23 @@
+# diff_drive_controller.yaml
+
+diff_drive_controller:
+  ros__parameters:
+    type: diff_drive_controller/DiffDriveController
+    publish_rate: 50
+    update_rate: 50
+    use_stamped_vel: true
+    open_loop: false
+    odom_frame_id: odom
+    base_frame_id: base_link
+    pose_covariance_diagonal: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    twist_covariance_diagonal: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    enable_odom_tf: true
+    left_wheel_names: ["front_left_wheel_joint", "rear_left_wheel_joint"]
+    right_wheel_names: ["front_right_wheel_joint", "rear_right_wheel_joint"]
+    wheel_separation: 0.45  # Adjust based on the actual separation of your wheels
+    wheel_radius: 0.055      # Radius of the wheels
+    cmd_vel_timeout: 0.25
+    allow_multiple_cmd_vel_publishers: false
+    publish_cmd: true
+    velocity_rolling_window_size: 10
+

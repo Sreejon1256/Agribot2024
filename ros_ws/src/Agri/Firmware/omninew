@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+
+import rclpy
+from rclpy.node import Node
+from geometry_msgs.msg import Twist
+from std_msgs.msg import Float32
+from std_msgs.msg import Int32
+import serial
+
+
+# Initialize the serial communication
+SERIAL = serial.Serial("/dev/ttyACM0", 115200, timeout=1)
+
+class MotorSpeed(Node):
+
+    def __init__(self):
+        super().__init__('motor_control')
+
+        # Subscribe to 'cmd_vel' for movement commands
+        self.subscription = self.create_subscription(Twist, 'cmd_vel', self.listener_callback, 10)
+        self.publisher_motor_1 = self.create_publisher(Int32, 'm1_speed', 10)
+        self.publisher_motor_1_dir = self.create_publisher(Int32,'m1_dir',10)
+        self.publisher_motor_2 = self.create_publisher(Int32, 'm2_speed', 10)
+        self.publisher_motor_2_dir = self.create_publisher(Int32,'m2_dir',10)
+        self.publisher_motor_3 = self.create_publisher(Int32, 'm3_speed', 10)
+        self.publisher_motor_3_dir = self.create_publisher(Int32,'m3_dir',10)
+        self.publisher_motor_4 = self.create_publisher(Int32, 'm4_speed', 10)
+        self.publisher_motor_4_dir = self.create_publisher(Int32,'m4_dir',10)
+    
+
+        # Maximum and minimum PWM values
+        self.max_pwm = float(220)
+        self.min_pwm = float(-220)
+
+    def listener_callback(self, msg):
+        
+        #R = 0.15 # Wheel Radius
+        # L =    Distance from wheel to base center (USE IF NEEDED)
+
+        # Calculate motor speeds based on linear and angular velocity
+        m1_speed = 1/0.15*(0.707106781*msg.linear.x + 0.707106781*msg.linear.y + 0.15*msg.linear.z)
+        m2_speed = 1/0.15*(0.707106781*msg.linear.x - 0.707106781*msg.linear.y + 0.15*msg.linear.z)
+        m3_speed = 1/0.15*(-0.707106781*msg.linear.x - 0.707106781*msg.linear.y + 0.15*msg.linear.z)
+        m4_speed = 1/0.15*(-0.707106781*msg.linear.x + 0.707106781*msg.linear.y + 0.15*msg.linear.z)
+
+        # Scale the values to the range [-220, 220]
+        m1_speed *= self.max_pwm
+        m2_speed *= self.max_pwm
+        m3_speed *= self.max_pwm
+        m4_speed *= self.max_pwm
+
+        # Ensure the PWM values are clamped between -220 and 200
+        m1_speed = max(min(m1_speed, self.max_pwm), self.min_pwm)
+        m2_speed = max(min(m2_speed, self.max_pwm), self.min_pwm)
+        m3_speed = max(min(m3_speed, self.max_pwm), self.min_pwm)
+        m4_speed = max(min(m4_speed, self.max_pwm), self.min_pwm)
+
+        # Determine motor direction (1 for negative, 0 for positive) and take absolute speed
+        m1_dir = 1 if m1_speed < 0 else 0
+        m2_dir = 1 if m2_speed < 0 else 0
+        m3_dir = 1 if m3_speed < 0 else 0
+        m4_dir = 1 if m4_speed < 0 else 0
+
+        m1_speed = abs(int(m1_speed))
+        m2_speed = abs(int(m2_speed))
+        m3_speed = abs(int(m3_speed))
+        m4_speed = abs(int(m4_speed))
+
+        '''data_array = [  # Start byte
+                  m1_speed, m1_dir, 
+                  m2_speed, m2_dir, 
+                  m3_speed, m3_dir, 
+                  m4_speed, m4_dir]  # Stop byte
+        
+        SERIAL.write(bytearray(data_array))
+        # Publish the scaled PWM values for the motors'''
+
+        SERIAL.write(f'{m1_speed},{m2_speed},{m3_speed},{m4_speed}\n'.encode())
+
+        self.publisher_motor_1.publish(Int32(data=int(m1_speed)))
+        self.publisher_motor_1_dir.publish(Int32(data=int(m1_dir)))
+        self.publisher_motor_2.publish(Int32(data=int(m2_speed)))
+        self.publisher_motor_2_dir.publish(Int32(data=int(m2_dir)))
+        self.publisher_motor_3.publish(Int32(data=int(m3_speed)))
+        self.publisher_motor_3_dir.publish(Int32(data=int(m3_dir)))
+        self.publisher_motor_4.publish(Int32(data=int(m4_speed)))
+        self.publisher_motor_4_dir.publish(Int32(data=int(m4_dir)))
+
+        self.get_logger().info(f"M1: {m1_speed}, M2: {m2_speed}, M3: {m3_speed},  M4: {m4_speed}, M4_dir:{m4_dir}")
+
+def main(args=None):
+    rclpy.init(args=args)
+    motor_control_node = MotorSpeed()
+    rclpy.spin(motor_control_node)
+    motor_control_node.destroy_node()
+    rclpy.shutdown()
+
+
+if __name__ == '__main__':
+    main()
